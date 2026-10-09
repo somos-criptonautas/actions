@@ -1,0 +1,29 @@
+name: Forks behind upstream
+
+on:
+  schedule:
+    - cron: "0 12 * * 1" # Mondays
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare forks with upstream
+        run: bash .github/forks/check.sh .github/forks/forks.txt > report.md
+      - name: Open, update or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Forks behind upstream
+        run: |
+          n=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -s report.md ]; then
+            if [ -n "$n" ]; then gh issue edit "$n" --body-file report.md
+            else gh issue create --title "$TITLE" --body-file report.md; fi
+          elif [ -n "$n" ]; then
+            gh issue close "$n" --comment "All forks are up to date."
+          fi
