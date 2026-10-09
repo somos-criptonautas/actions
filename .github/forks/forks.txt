@@ -6,7 +6,6 @@ somos-criptonautas/discourse-animated-avatars-nautas main discourse/discourse-an
 somos-criptonautas/discourse-phosphor-duotone-icons main discourse/discourse-phosphor-duotone-icons main
 somos-criptonautas/discourse-search-nautas main notriddle/discourse-duckduckgo-search master
 somos-criptonautas/discourse-closed-sidebar-nautas main VaperinaDEV/closed-sidebar-by-default main
-somos-criptonautas/discourse-community-support-nautas main VaperinaDEV/community-support main
 somos-criptonautas/discourse-power-tools-nautas main JTech-Forums/JtechTools main
 somos-criptonautas/ghost-headline-theme-nautas main TryGhost/Headline main
 somos-criptonautas/ghost-bunny-cdn-storage main betschki/ghost-bunny-cdn-storage main
