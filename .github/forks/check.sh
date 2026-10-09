@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prints one markdown line per fork that is behind its upstream; empty output = all synced.
 set -u
+exec 3< "${1:-/dev/stdin}"  # open before cd so relative paths work
 git init -q repo && cd repo
 while read -r fork fb up ub; do
   [ -z "$fork" ] && continue
@@ -10,4 +11,4 @@ while read -r fork fb up ub; do
   else
     echo "- [ ] $fork — could not fetch $fork or $up"
   fi
-done < "${1:-/dev/stdin}"
+done <&3
