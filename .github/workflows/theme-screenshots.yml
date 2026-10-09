@@ -1,0 +1,128 @@
+name: Theme screenshots
+
+# Runs a component's spec/system/screenshots_spec.rb against Discourse core with
+# SCREENSHOTS=1 and commits the PNGs it saves to docs/screenshots/ in that repo.
+# Based on the system tests job of discourse/.github discourse-theme.yml@v1.
+#
+# Caller (in the component repo):
+#   on: workflow_dispatch
+#   permissions: { contents: write }
+#   jobs:
+#     screenshots:
+#       uses: somos-criptonautas/actions/.github/workflows/theme-screenshots.yml@main
+
+on:
+  workflow_call:
+    inputs:
+      core_ref:
+        type: string
+        required: false
+        default: "latest"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    container: discourse/discourse_test:slim-browsers
+    timeout-minutes: 30
+
+    env:
+      RUBY_GLOBAL_METHOD_CACHE_SIZE: 131072
+      PGUSER: discourse
+      PGPASSWORD: discourse
+      RAILS_ENV: test
+      CHEAP_SOURCE_MAPS: "1"
+      PARALLEL_TEST_PROCESSORS: 1
+      LOAD_PLUGINS: 1
+      CAPYBARA_DEFAULT_MAX_WAIT_TIME: 10
+      SCREENSHOTS: "1"
+
+    steps:
+      - name: Set working directory owner
+        run: chown root:root .
+
+      - uses: actions/checkout@v6
+        with:
+          repository: discourse/discourse
+          fetch-depth: 1
+          ref: ${{ inputs.core_ref }}
+
+      - name: Install component
+        uses: actions/checkout@v6
+        with:
+          path: tmp/component
+          fetch-depth: 1
+
+      - name: Setup Git
+        run: |
+          git config --global user.email "ci@ci.invalid"
+          git config --global user.name "Criptonautas CI"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/tmp/component"
+
+      - name: Start redis
+        run: redis-server /etc/redis/redis.conf &
+
+      - name: Start Postgres
+        run: |
+          chown -R postgres /var/run/postgresql
+          sudo -E -u postgres script/start_test_db.rb
+          sudo -u postgres psql -c "CREATE ROLE $PGUSER LOGIN SUPERUSER PASSWORD '$PGPASSWORD';"
+
+      - name: Container envs
+        id: container-envs
+        run: |
+          echo "ruby_version=$RUBY_VERSION" >> $GITHUB_OUTPUT
+          echo "debian_release=$DEBIAN_RELEASE" >> $GITHUB_OUTPUT
+
+      - name: Bundler cache
+        uses: actions/cache@v5
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-${{ steps.container-envs.outputs.ruby_version }}-${{ steps.container-envs.outputs.debian_release }}-gem-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.container-envs.outputs.ruby_version }}-${{ steps.container-envs.outputs.debian_release }}-gem-
+
+      - name: Setup gems
+        run: |
+          bundle config --local path vendor/bundle
+          bundle config --local deployment true
+          bundle config --local without development
+          bundle install --jobs 4
+          bundle clean
+
+      - name: Clone additional plugins
+        uses: discourse/.github/actions/clone-additional-plugins@v1
+        with:
+          about_json_path: tmp/component/about.json
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install playwright
+        run: pnpm playwright -V && pnpm playwright install --with-deps --no-shell chromium
+
+      - name: Create and migrate database
+        run: |
+          bin/rake db:create
+          script/silence_successful_output bin/rake db:migrate
+
+      - name: Ember Build
+        env:
+          EMBER_ENV: development
+        run: script/assemble_ember_build.rb
+
+      - name: Take screenshots
+        run: bin/rspec --format documentation tmp/component/spec/system/screenshots_spec.rb
+
+      - name: Commit screenshots
+        run: |
+          mkdir -p tmp/component/docs/screenshots
+          cp tmp/capybara/screenshots/*.png tmp/component/docs/screenshots/
+          cd tmp/component
+          git add docs/screenshots
+          git diff --cached --quiet && exit 0
+          git commit -m "Update screenshots"
+          git push
