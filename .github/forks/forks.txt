@@ -9,3 +9,4 @@ somos-criptonautas/discourse-closed-sidebar-nautas main VaperinaDEV/closed-sideb
 somos-criptonautas/discourse-power-tools-nautas main JTech-Forums/JtechTools main
 somos-criptonautas/ghost-headline-theme-nautas main TryGhost/Headline main
 somos-criptonautas/ghost-bunny-cdn-storage main betschki/ghost-bunny-cdn-storage main
+somos-criptonautas/discourse-community-support-nautas main VaperinaDEV/community-support main
