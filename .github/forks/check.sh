@@ -3,8 +3,10 @@
 set -u
 exec 3< "${1:-/dev/stdin}"  # open before cd so relative paths work
 git init -q repo && cd repo
-while read -r fork fb up ub; do
+while read -r fork fb up ub cadence; do
   [ -z "$fork" ] && continue
+  # A "monthly" fork is only reported in the first week of the month.
+  [ "${cadence:-}" = monthly ] && [ "$(date +%-d)" -gt 7 ] && continue
   if git fetch -q "https://github.com/$fork" "+$fb:f" && git fetch -q "https://github.com/$up" "+$ub:u"; then
     n=$(git rev-list --count --cherry-pick --right-only f...u)  # skips commits already cherry-picked
     if [ "$n" -gt 0 ]; then echo "- [ ] [$fork](https://github.com/$fork) — $n commits behind [$up](https://github.com/$up/commits/$ub)"; fi
