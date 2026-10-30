@@ -94,7 +94,7 @@ jobs:
           bundle clean
 
       - name: Clone additional plugins
-        uses: discourse/.github/actions/clone-additional-plugins@v1
+        uses: discourse/.github/actions/clone-additional-plugins@83e5990bc53a4e0eddabda672558e29382072bd6 # v1
         with:
           about_json_path: tmp/component/about.json
 
